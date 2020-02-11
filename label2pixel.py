@@ -25,3 +25,4 @@ for image in file_names:
     pixel = label2pixel(image)
     path = os.path.join(OUTPUT_PATH, os.path.basename(image))
     pixel.save(path)
+

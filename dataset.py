@@ -4,7 +4,7 @@ import os
 from PIL import Image
 
 from torch.utils.data import Dataset
-
+from transform import Relabel, ToLabel, Colorize
 from torchvision.transforms import ToTensor, ToPILImage
 
 EXTENSIONS = ['.jpg', '.png']
@@ -184,10 +184,15 @@ class idd_lite(Dataset):
         self.filenamesGt.sort()
         
         self.co_transform = co_transform # ADDED THIS
-        # to delete!!!!!!! (3rows)
-        self.filenames = self.filenames[:1000]
-        self.filenames1 = self.filenames1[:1000]
-        self.filenamesGt = self.filenamesGt[:1000]
+        # using only a subset of the data! (8rows)
+        if subset=='train':
+            self.filenames = self.filenames[:10000]
+            self.filenames1 = self.filenames1[:10000]
+            self.filenamesGt = self.filenamesGt[:10000]
+        if subset == 'test':
+            self.filenames = self.filenames[:1000]
+            self.filenames1 = self.filenames1[:1000]
+            self.filenamesGt = self.filenamesGt[:1000]
 
     def __getitem__(self, index):
         
@@ -195,19 +200,19 @@ class idd_lite(Dataset):
         filename1 = self.filenames1[index] #ChangedByUs
         filenameGt = self.filenamesGt[index]
         
-        with open(image_path_city(self.images_root, filename), 'rb') as f:
+        with open(filename, 'rb') as f:
             image = load_image(f).convert('RGB')
-        with open(image_path_city(self.images_root, filename1), 'rb') as f: #ChangedByUs
+        with open(filename1, 'rb') as f: #ChangedByUs
             image1 = load_image(f).convert('RGB')
-        with open(image_path_city(self.labels_root, filenameGt), 'rb') as f:
+        with open(filenameGt, 'rb') as f:
             label = load_image(f).convert('P')
 
+        oldlabel = ToLabel()(label) # we want to return the original label- with no transformations!
 
-        oldimage = image
         if self.co_transform is not None:
             image, image1, label = self.co_transform(image, image1, label) #ChangedByUs
         filename = filename.split("\\")[-1].split(".")[0]
-        return image, image1, label, filename #ChangedByUs. also return the filename to save the test data
+        return image, image1, oldlabel, filename #ChangedByUs. also return the filename to save the test data
 
     def __len__(self):
         return len(self.filenames)

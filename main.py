@@ -51,7 +51,7 @@ OUTPUT_DIR = r'D:\Users Data\inbal.tlgip\Project\output_images'
 DATA_ROOT = r'D:\Users Data\inbal.tlgip\Desktop\part b'
 BATCH_SIZE = 2
 NUM_WORKERS = 0
-NUM_EPOCHS = 1
+NUM_EPOCHS = 80
 ENCODER_ONLY = False
 device = torch.device("cuda")
 # device = torch.device("cpu")
@@ -121,12 +121,12 @@ def main():
     dataset_train = idd_lite(DATA_ROOT, co_transform, 'train')
     print("length of training set: ",len(dataset_train))
     #test data
-    dataset_test = idd_lite(DATA_ROOT, co_transform_val, 'test')
+    dataset_test = idd_lite(DATA_ROOT, co_transform, 'test')
     print("length of validation set: ",len(dataset_test))
 
     # NOTE: PLEASE DON'T CHANGE batch_size and num_workers here. We have limited resources.
     loader_train = DataLoader(dataset_train, num_workers=NUM_WORKERS, batch_size=BATCH_SIZE, shuffle=True)
-    loader_test = DataLoader(dataset_test, num_workers=NUM_WORKERS, batch_size=BATCH_SIZE, shuffle=True)
+    loader_test = DataLoader(dataset_test, num_workers=NUM_WORKERS, batch_size=1, shuffle=True)
     dataiter = iter(loader_test)
     seven_test_images = []
     for i in range(7):
@@ -218,20 +218,31 @@ def main():
             iouStr = getColorEntry(iouTrain)+'{:0.2f}'.format(iouTrain*100) + '\033[0m'
             print ("EPOCH IoU on TRAIN set: ", iouStr, "%")
 
-        #save one image per epoch
-        # if USE_CUDA:
-        #     first_val_image_A = first_val_image_A.to(device)
-        #     first_val_image_B = first_val_image_B.to(device)  # ChangedByUs
-        #     first_val_image_labels = first_val_image_labels.to(device)
-        #
-        # inputs = first_val_image_A.to(device)
-        # inputs1 = first_val_image_B.to(device)  # ChangedByUs
-        for i in range(len(seven_test_images)):
-            outputs_val = model([seven_test_images[i][0].to(device), seven_test_images[i][1].to(device)], only_encode=ENCODER_ONLY)
-            outputs_val = softmax(outputs_val)
-            cv2.imwrite(os.path.join(OUTPUT_DIR, str(i), 'epoch' + str(epoch) + '_output.tiff'),
-                        (((outputs_val[0, 1, :, :] > 0.5) * 255).squeeze().cpu().numpy()).astype('uint8'))
-
+        # print FP FN TP TN
+        FP = 0
+        FN = 0
+        TP = 0
+        TN = 0
+        for step, (images, images1, labels, filename) in enumerate(loader_test):
+            inputs = images.to(device)
+            inputs1 = images1.to(device)  # ChangedByUs
+            targets = labels.to(device)
+            targets[targets < 128] = 0  # ChangedByUs
+            targets[targets >= 128] = 1  # ChangedByUs
+            output = model([inputs.to(device), inputs1.to(device)], only_encode=ENCODER_ONLY)[0]
+            target = torch.LongTensor([target.cpu().numpy().flatten()[0] for target in targets])[0]
+            distance_from_correct = []
+            distance_from_incorrect = []
+            if target == 0 and output[0] > output[1]:
+                TN += 1
+            if target == 0 and output[0] < output[1]:
+                FP += 1
+            if target == 1 and output[0] > output[1]:
+                FN += 1
+            if target == 1 and output[0] < output[1]:
+                TP += 1
+        print('epoch', epoch, '- FP: ', FP, 'FN: ', FN, 'TP: ', TP, 'TN: ', TN)
+        print('recall= ', TP/(TP+FN), 'precission= ', TP/(TP+FP))
     my_end_time = time.time()
     print(my_end_time - my_start_time)
 
@@ -300,8 +311,8 @@ def main():
 
         outputs_val = model([images.to(device), images1.to(device)], only_encode=ENCODER_ONLY)
         outputs_val = softmax(outputs_val)
-        cv2.imwrite(r'D:\Users Data\inbal.tlgip\Project\output_images\test_output/'+str(step)+'.tiff',
-                    (((outputs_val[0, 1, :, :] > 0.5) * 255).squeeze().cpu().numpy()).astype('uint8'))
+        # cv2.imwrite(r'D:\Users Data\inbal.tlgip\Project\output_images\test_output/'+str(step)+'.tiff',
+        #             (((outputs_val[0, 1, :, :] > 0.5) * 255).squeeze().cpu().numpy()).astype('uint8'))
 
 
 
@@ -317,43 +328,7 @@ if __name__ == '__main__':
     model.to(device)
     model.eval()
     co_transform_val = MyCoTransform(ENCODER_ONLY, augment=False, height=IMAGE_HEIGHT) #askAlex why we dont augment in val?
-
     #load test data
     dataset_test = idd_lite(DATA_ROOT, co_transform_val, 'test')
     loader_test = DataLoader(dataset_test, num_workers=NUM_WORKERS, batch_size=1, shuffle=True)
-    # dataiter = iter(loader_test)
-    # (val_image_A, val_image_B, val_image_labels) = dataiter.next()
-    iou_sum = 0
-    count = 0
-    recall_sum = 0
-    precision_sum = 0
-    for step, (images, images1, labels, filename) in enumerate(loader_test):
-        inputs = images.to(device)
-        inputs1 = images1.to(device)  # ChangedByUs
-        targets = labels.to(device)
-        # targets_orig = targets.clone()
-        # targets[targets_orig >= 128] = 1  # ChangedByUs
-        # targets[targets_orig < 128] = 0  # ChangedByUs
-        #outputs_val = model([images.cuda(), images1.cuda()], only_encode=ENCODER_ONLY)
-        outputs_val = model([inputs.to(device), inputs1.to(device)], only_encode=ENCODER_ONLY)
-        outputs_val = softmax(outputs_val)
-        # cv2.imwrite(r'D:\Users Data\inbal.tlGIP\Desktop\part b\output_test/'+str(filename[0])+'.tiff',
-        #             (((outputs_val[0, 1, :, :] > 0.5) * 255).squeeze().cpu().numpy()).astype('uint8'))
-        # cv2.imwrite(r'D:\Users Data\inbal.tlgip\Project\output_images\test_label/'+str(filename[0])+'.tiff',
-        #             (targets[0, :, :, :].squeeze().cpu().numpy()).astype('uint8'))
-        iou_avg_local, recall, precision = calc_iou((((outputs_val[0, 1, :, :] > 0.5) * 255).squeeze().cpu().numpy()).astype('uint8'),
-                        (targets[0, :, :, :].squeeze().cpu().numpy()).astype('uint8'), 0.3)
-
-        if not np.isnan(iou_avg_local): # if there are no blobs: calc=nan
-            iou_sum += iou_avg_local
-            recall_sum += recall
-            precision_sum += precision
-            count += 1
-
-    iou_avg = iou_sum/count
-    recall_avg = recall_sum/count
-    precision_avg = precision_sum/count
-    print("iou = ", iou_avg)
-    print("recall = ", recall_avg)
-    print("precision = ", precision_avg)
 
