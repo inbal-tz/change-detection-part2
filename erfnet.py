@@ -113,29 +113,30 @@ class Decoder (nn.Module):
         self.layers = nn.ModuleList()
 
         # self.layers.append(UpsamplerBlock(128,64))
-        self.layers.append(UpsamplerBlock(64,64)) #changedByUs
+        self.layers.append(UpsamplerBlock(256, 64))  # changedByUs
         self.layers.append(non_bottleneck_1d(64, 0, 1))
         self.layers.append(non_bottleneck_1d(64, 0, 1))
 
-        self.layers.append(UpsamplerBlock(64,16))
+        self.layers.append(UpsamplerBlock(64, 16))
         self.layers.append(non_bottleneck_1d(16, 0, 1))
         self.layers.append(non_bottleneck_1d(16, 0, 1))
 
         self.output_conv = nn.ConvTranspose2d( 16, num_classes, 2, stride=2, padding=0, output_padding=0, bias=True)
 
     def forward(self, input):
-        print("starting decoder")
         output = input
 
         for layer in self.layers:
             output = layer(output)
-            print(output.size)
 
         output = self.output_conv(output)
-
+        output = torch.nn.AvgPool2d(kernel_size=output.size()[2], stride=0, padding=0, ceil_mode=False, count_include_pad=True)(output)
+        output = torch.flatten(output, 1)
+        output = nn.Linear(output.size()[1], 2, False)(output.to('cpu'))
         return output
 
-#ERFNet
+
+# ERFNet
 class Net(nn.Module):
     def __init__(self, num_classes, encoder=None):  #use encoder to pass pretrained encoder
         super().__init__()
@@ -148,9 +149,9 @@ class Net(nn.Module):
         self.decoder = Decoder(num_classes)
 
     def forward(self, inputs, only_encode=False):
-        results =[] #ChangedByUs save the results after encoder, for borth images.
+        results =[] # ChangedByUs save the results after encoder, for borth images.
         if only_encode:
-            for input in [0, 1]: #ChangedByUs
+            for input in [0, 1]: # ChangedByUs
                 results.append(self.encoder.forward(inputs[input], predict=True)) #ChangedByUs. save encoder result in array
             res = torch.cat((results[0], results[1]), dim=1) #askalex - if dim = 1 or 0
             return nn.functional.upsample(res,mode='bilinear',align_corners=False,scale_factor=8) #ChangedByUs
@@ -158,4 +159,5 @@ class Net(nn.Module):
             for i in [0, 1]:  # ChangedByUs
                 results.append(self.encoder.forward(inputs[i]))  # ChangedByUs
             res = torch.cat((results[0], results[1]), dim=1)  # askalex - if dim = 1 or 0
-            return self.decoder.forward(res)  # ChangedByUs
+            res = self.decoder.forward(res)
+            return res

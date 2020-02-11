@@ -51,11 +51,11 @@ OUTPUT_DIR = r'D:\Users Data\inbal.tlgip\Project\output_images'
 DATA_ROOT = r'D:\Users Data\inbal.tlgip\Desktop\part b'
 BATCH_SIZE = 2
 NUM_WORKERS = 0
-NUM_EPOCHS = 150
+NUM_EPOCHS = 1
 ENCODER_ONLY = False
 device = torch.device("cuda")
 # device = torch.device("cpu")
-device = 'cuda'
+# device = 'cuda'
 color_transform = Colorize(NUM_CLASSES)
 image_transform = ToPILImage()
 
@@ -124,7 +124,6 @@ def main():
     dataset_test = idd_lite(DATA_ROOT, co_transform_val, 'test')
     print("length of validation set: ",len(dataset_test))
 
-
     # NOTE: PLEASE DON'T CHANGE batch_size and num_workers here. We have limited resources.
     loader_train = DataLoader(dataset_train, num_workers=NUM_WORKERS, batch_size=BATCH_SIZE, shuffle=True)
     loader_test = DataLoader(dataset_test, num_workers=NUM_WORKERS, batch_size=BATCH_SIZE, shuffle=True)
@@ -186,14 +185,15 @@ def main():
             inputs1 = images1.to(device)  # ChangedByUs
             targets = labels.to(device)
             targets_orig = targets.clone()
-            targets[targets_orig >= 128] = 1  # ChangedByUs
-            targets[targets_orig < 128] = 0  # ChangedByUs
+            targets[targets_orig >= 128] = 1  # ChangedByUs 1=white. there is a change
+            targets[targets_orig < 128] = 0  # ChangedByUs 0=black. no change
             outputs = model([inputs, inputs1], only_encode=ENCODER_ONLY)
             # zero the parameter gradients
             optimizer.zero_grad()
             # forward + backward + optimize
-            targets = max(targets)
-            loss = criterion(outputs, targets[:, 0])
+            # targets = max(targets)
+            targets = torch.LongTensor([target.cpu().numpy().flatten()[0] for target in targets])
+            loss = criterion(outputs, targets)
             loss.backward()
             optimizer.step()
 
@@ -226,8 +226,8 @@ def main():
         #
         # inputs = first_val_image_A.to(device)
         # inputs1 = first_val_image_B.to(device)  # ChangedByUs
-        for i in range(len(seven_val_images)):
-            outputs_val = model([seven_val_images[i][0].cuda(), seven_val_images[i][1].cuda()], only_encode=ENCODER_ONLY)
+        for i in range(len(seven_test_images)):
+            outputs_val = model([seven_test_images[i][0].to(device), seven_test_images[i][1].to(device)], only_encode=ENCODER_ONLY)
             outputs_val = softmax(outputs_val)
             cv2.imwrite(os.path.join(OUTPUT_DIR, str(i), 'epoch' + str(epoch) + '_output.tiff'),
                         (((outputs_val[0, 1, :, :] > 0.5) * 255).squeeze().cpu().numpy()).astype('uint8'))
@@ -298,7 +298,7 @@ def main():
     # (val_image_A, val_image_B, val_image_labels) = dataiter.next()
     for step, (images, images1, labels, filename) in enumerate(loader_test):
 
-        outputs_val = model([images.cuda(), images1.cuda()], only_encode=ENCODER_ONLY)
+        outputs_val = model([images.to(device), images1.to(device)], only_encode=ENCODER_ONLY)
         outputs_val = softmax(outputs_val)
         cv2.imwrite(r'D:\Users Data\inbal.tlgip\Project\output_images\test_output/'+str(step)+'.tiff',
                     (((outputs_val[0, 1, :, :] > 0.5) * 255).squeeze().cpu().numpy()).astype('uint8'))
@@ -314,7 +314,7 @@ if __name__ == '__main__':
     model_file = importlib.import_module('erfnet')
     model = model_file.Net(NUM_CLASSES).to(device)
     model.load_state_dict(torch.load(r'D:\Users Data\inbal.tlGIP\Desktop\modelsave.pt'))
-    model.cuda()
+    model.to(device)
     model.eval()
     co_transform_val = MyCoTransform(ENCODER_ONLY, augment=False, height=IMAGE_HEIGHT) #askAlex why we dont augment in val?
 
@@ -335,7 +335,7 @@ if __name__ == '__main__':
         # targets[targets_orig >= 128] = 1  # ChangedByUs
         # targets[targets_orig < 128] = 0  # ChangedByUs
         #outputs_val = model([images.cuda(), images1.cuda()], only_encode=ENCODER_ONLY)
-        outputs_val = model([inputs.cuda(), inputs1.cuda()], only_encode=ENCODER_ONLY)
+        outputs_val = model([inputs.to(device), inputs1.to(device)], only_encode=ENCODER_ONLY)
         outputs_val = softmax(outputs_val)
         # cv2.imwrite(r'D:\Users Data\inbal.tlGIP\Desktop\part b\output_test/'+str(filename[0])+'.tiff',
         #             (((outputs_val[0, 1, :, :] > 0.5) * 255).squeeze().cpu().numpy()).astype('uint8'))

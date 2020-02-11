@@ -20,6 +20,7 @@ def label2pixel(label):
 
 
 file_names = [os.path.join(dp, f) for dp, dn, fn in os.walk(os.path.expanduser(INPUT_PATH)) for f in fn if is_image(f)]
+
 for image in file_names:
     pixel = label2pixel(image)
     path = os.path.join(OUTPUT_PATH, os.path.basename(image))

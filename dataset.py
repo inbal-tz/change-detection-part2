@@ -184,7 +184,10 @@ class idd_lite(Dataset):
         self.filenamesGt.sort()
         
         self.co_transform = co_transform # ADDED THIS
-
+        # to delete!!!!!!! (3rows)
+        self.filenames = self.filenames[:1000]
+        self.filenames1 = self.filenames1[:1000]
+        self.filenamesGt = self.filenamesGt[:1000]
 
     def __getitem__(self, index):
         
