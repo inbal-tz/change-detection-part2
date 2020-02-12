@@ -244,6 +244,12 @@ def main():
         print('epoch', epoch, '- FP: ', FP, 'FN: ', FN, 'TP: ', TP, 'TN: ', TN)
         if TP+FN > 0 and TP+FP > 0:
             print('recall= ', TP/(TP+FN), 'precission= ', TP/(TP+FP))
+        print("results of 7 test images")
+        for image in seven_test_images:
+            inputs = image[0].to(device)
+            inputs1 = image[1].to(device)  # ChangedByUs
+            output = model([inputs.to(device), inputs1.to(device)], only_encode=ENCODER_ONLY)[0]
+            print(output)
     my_end_time = time.time()
     print(my_end_time - my_start_time)
 

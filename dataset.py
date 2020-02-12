@@ -184,15 +184,46 @@ class idd_lite(Dataset):
         self.filenamesGt.sort()
         
         self.co_transform = co_transform # ADDED THIS
-        # using only a subset of the data! (8rows)
-        if subset=='train':
-            self.filenames = self.filenames[:10000]
-            self.filenames1 = self.filenames1[:10000]
-            self.filenamesGt = self.filenamesGt[:10000]
+        # using only a subset of the data! and make it have same number of changed/unchanged images (8rows)
+        if subset == 'train':
+            self.filenames = self.get_balanced_dataBase(10000, os.path.join(self.images_root, 'A'), self.labels_root)
+            self.filenames1 = self.get_balanced_dataBase(10000, os.path.join(self.images_root, 'B'), self.labels_root)
+            self.filenamesGt = self.get_balanced_dataBase(10000, self.labels_root, self.labels_root)
         if subset == 'test':
-            self.filenames = self.filenames[:1000]
-            self.filenames1 = self.filenames1[:1000]
-            self.filenamesGt = self.filenamesGt[:1000]
+            self.filenames = self.get_balanced_dataBase(1000, os.path.join(self.images_root, 'A'), self.labels_root)
+            self.filenames1 = self.get_balanced_dataBase(1000, os.path.join(self.images_root, 'B'), self.labels_root)
+            self.filenamesGt = self.get_balanced_dataBase(1000, self.labels_root, self.labels_root)
+
+    def get_balanced_dataBase(self, dataBase_length, file_path, label_path):
+        file_names = [os.path.join(dp, f) for dp, dn, fn in os.walk(os.path.expanduser(file_path)) for f in fn if
+                      is_image(f)]
+        label_names = [os.path.join(dp, f) for dp, dn, fn in os.walk(os.path.expanduser(label_path)) for f in fn if
+                      is_image(f)]
+        if len(file_names) <= dataBase_length:
+            return file_names
+        balanced_data_base = []
+        not_added = []
+        with_change = 0
+        no_change = 0
+        for i in range(len(label_names)):
+            if len(balanced_data_base) >= dataBase_length:
+                break
+            im = Image.open(label_names[i])
+            im = im.convert('1')
+            im = list(im.getdata())
+            pixel_val = max(im)
+            if pixel_val == 255 and with_change <= dataBase_length / 2:
+                balanced_data_base.append(file_names[i])
+                with_change += 1
+            elif pixel_val == 0 and no_change <= dataBase_length / 2:
+                balanced_data_base.append(file_names[i])
+                no_change += 1
+            else:
+                not_added.append(file_names[i])
+        if len(balanced_data_base) < dataBase_length:
+            balanced_data_base += not_added[0:dataBase_length - len(balanced_data_base)]
+        return balanced_data_base
+
 
     def __getitem__(self, index):
         
@@ -207,7 +238,7 @@ class idd_lite(Dataset):
         with open(filenameGt, 'rb') as f:
             label = load_image(f).convert('P')
 
-        oldlabel = ToLabel()(label) # we want to return the original label- with no transformations!
+        oldlabel = ToLabel()(label)  # we want to return the original label- with no transformations!
 
         if self.co_transform is not None:
             image, image1, label = self.co_transform(image, image1, label) #ChangedByUs
