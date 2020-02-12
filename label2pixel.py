@@ -1,8 +1,8 @@
 from PIL import Image
 import os
 
-INPUT_PATH = r'D:\Users Data\inbal.tlGIP\Desktop\part b\labels\trainCropped'
-OUTPUT_PATH = r'D:\Users Data\inbal.tlGIP\Desktop\part b\labels\train'
+INPUT_PATH = r'D:\Users Data\inbal.tlGIP\Desktop\part b\labels\testCropped'
+OUTPUT_PATH = r'D:\Users Data\inbal.tlGIP\Desktop\part b\labels\test'
 EXTENSIONS = ['.jpg', '.png']
 
 

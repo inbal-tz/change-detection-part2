@@ -47,7 +47,7 @@ def calc_iou(output, label, threshold):
     label[label < 128] = 0
     label[label >= 128] = 1
     square_cc = cv2.connectedComponentsWithStats(square_image, connectivity=8)
-    # imshow_components(square_cc[1])
+    imshow_components(square_cc[1])
     iou_array=[] #array of iou for each blob. return average of this.
     for i in range(1,square_cc[0]):
         if square_cc[2][i][4] > MIN_BLOB_AREA:
@@ -85,7 +85,7 @@ def calc_iou(output, label, threshold):
 
 
 # print(calc_iou(label, output))
-# calc_iou(output, label, 0.3)
+# calc_iou(label, label, 0.3)
 
 
 # print(label_cc[0]) #number of blobs+1 (with background)

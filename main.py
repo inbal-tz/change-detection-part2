@@ -51,7 +51,7 @@ OUTPUT_DIR = r'D:\Users Data\inbal.tlgip\Project\output_images'
 DATA_ROOT = r'D:\Users Data\inbal.tlgip\Desktop\part b'
 BATCH_SIZE = 2
 NUM_WORKERS = 0
-NUM_EPOCHS = 10
+NUM_EPOCHS = 150
 ENCODER_ONLY = False
 device = torch.device("cuda")
 # device = torch.device("cpu")
@@ -180,6 +180,7 @@ def main():
         model.train()
         for step, (images, images1, labels, filename) in enumerate(loader_train):  # ChangedByUs
             start_time = time.time()
+            # s = torch.sum(model.decoder.finalLayer.weight.data)  # show weights of final layer
             # inputs = [images.to(device), images1.to(device)] #ChangedByUs
             inputs = images.to(device)
             inputs1 = images1.to(device)  # ChangedByUs
@@ -249,12 +250,11 @@ def main():
             inputs = image[0].to(device)
             inputs1 = image[1].to(device)  # ChangedByUs
             output = model([inputs.to(device), inputs1.to(device)], only_encode=ENCODER_ONLY)[0]
-            print(output)
+            print(output)  # correct output for 12/2/2020 1001101
     my_end_time = time.time()
     print(my_end_time - my_start_time)
 
-
-    print('loss: {average:',average,'} (epoch: {',epoch,'}, step: {',step,'})', "// Avg time/img: %.4f s" % (sum(time_train) / len(time_train) / BATCH_SIZE))
+    print('loss: {average:', average, '} (epoch: {',epoch,'}, step: {',step,'})', "// Avg time/img: %.4f s" % (sum(time_train) / len(time_train) / BATCH_SIZE))
 
 
     # # ### Validation ###
