@@ -51,7 +51,7 @@ OUTPUT_DIR = r'D:\Users Data\inbal.tlgip\Project\output_images'
 DATA_ROOT = r'D:\Users Data\inbal.tlgip\Desktop\part b'
 BATCH_SIZE = 2
 NUM_WORKERS = 0
-NUM_EPOCHS = 80
+NUM_EPOCHS = 10
 ENCODER_ONLY = False
 device = torch.device("cuda")
 # device = torch.device("cpu")
@@ -193,7 +193,7 @@ def main():
             # forward + backward + optimize
             # targets = max(targets)
             targets = torch.LongTensor([target.cpu().numpy().flatten()[0] for target in targets])
-            loss = criterion(outputs, targets)
+            loss = criterion(outputs, targets.to(device))
             loss.backward()
             optimizer.step()
 
@@ -242,7 +242,8 @@ def main():
             if target == 1 and output[0] < output[1]:
                 TP += 1
         print('epoch', epoch, '- FP: ', FP, 'FN: ', FN, 'TP: ', TP, 'TN: ', TN)
-        print('recall= ', TP/(TP+FN), 'precission= ', TP/(TP+FP))
+        if TP+FN > 0 and TP+FP > 0:
+            print('recall= ', TP/(TP+FN), 'precission= ', TP/(TP+FP))
     my_end_time = time.time()
     print(my_end_time - my_start_time)
 
@@ -324,11 +325,23 @@ if __name__ == '__main__':
     softmax = torch.nn.Softmax(dim=1)
     model_file = importlib.import_module('erfnet')
     model = model_file.Net(NUM_CLASSES).to(device)
-    model.load_state_dict(torch.load(r'D:\Users Data\inbal.tlGIP\Desktop\modelsave.pt'))
+    model.load_state_dict(torch.load(r'C:\Users\inbal.tlgip\modelsave_cropped.pt'))
     model.to(device)
     model.eval()
+    # from torchsummary import summary
+    # summary(model, (2,3,64,64))
+    # print(model)
     co_transform_val = MyCoTransform(ENCODER_ONLY, augment=False, height=IMAGE_HEIGHT) #askAlex why we dont augment in val?
     #load test data
     dataset_test = idd_lite(DATA_ROOT, co_transform_val, 'test')
     loader_test = DataLoader(dataset_test, num_workers=NUM_WORKERS, batch_size=1, shuffle=True)
+    for step, (images, images1, labels, filename) in enumerate(loader_test):
+        inputs = images.to(device)
+        inputs1 = images1.to(device)  # ChangedByUs
+        targets = labels.to(device)
+        targets[targets < 128] = 0  # ChangedByUs
+        targets[targets >= 128] = 1  # ChangedByUs
+        output = model([inputs.to(device), inputs1.to(device)], only_encode=ENCODER_ONLY)[0]
+        target = torch.LongTensor([target.cpu().numpy().flatten()[0] for target in targets])[0]
+        # print("target:", target, "output:", output)
 

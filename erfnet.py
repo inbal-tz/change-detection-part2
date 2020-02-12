@@ -120,19 +120,18 @@ class Decoder (nn.Module):
         self.layers.append(UpsamplerBlock(64, 16))
         self.layers.append(non_bottleneck_1d(16, 0, 1))
         self.layers.append(non_bottleneck_1d(16, 0, 1))
+        self.layers.append(nn.ConvTranspose2d( 16, num_classes, 2, stride=2, padding=0, output_padding=0, bias=True))
+        self.layers.append(torch.nn.AvgPool2d(kernel_size=64, stride=0, padding=0, ceil_mode=False, count_include_pad=True))
 
-        self.output_conv = nn.ConvTranspose2d( 16, num_classes, 2, stride=2, padding=0, output_padding=0, bias=True)
+        self.finalLayer = nn.Linear(2, 2, False)
 
     def forward(self, input):
         output = input
 
         for layer in self.layers:
             output = layer(output)
-
-        output = self.output_conv(output)
-        output = torch.nn.AvgPool2d(kernel_size=output.size()[2], stride=0, padding=0, ceil_mode=False, count_include_pad=True)(output)
-        output = torch.flatten(output, 1)
-        output = nn.Linear(output.size()[1], 2, False)(output.to('cpu'))
+        output = torch.flatten(output, start_dim=1)
+        output = self.finalLayer(output)
         return output
 
 
