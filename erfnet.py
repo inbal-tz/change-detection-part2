@@ -151,15 +151,15 @@ class Net(nn.Module):
         self.decoder = Decoder(num_classes)
 
     def forward(self, inputs, only_encode=False):
-        results =[] # ChangedByUs save the results after encoder, for borth images.
+        results =[]  # ChangedByUs save the results after encoder, for borth images.
         if only_encode:
             for input in [0, 1]: # ChangedByUs
                 results.append(self.encoder.forward(inputs[input], predict=True)) #ChangedByUs. save encoder result in array
             res = torch.cat((results[0], results[1]), dim=1) #askalex - if dim = 1 or 0
-            return nn.functional.upsample(res,mode='bilinear',align_corners=False,scale_factor=8) #ChangedByUs
+            return nn.functional.upsample(res,mode='bilinear',align_corners=False,scale_factor=8), -1 #ChangedByUs
         else:
             for i in [0, 1]:  # ChangedByUs
                 results.append(self.encoder.forward(inputs[i]))  # ChangedByUs
             res = torch.cat((results[0], results[1]), dim=1)  # askalex - if dim = 1 or 0
-            res, GAPoutput = self.decoder.forward(res)
-            return res, GAPoutput
+            res, beoreGAPoutput = self.decoder.forward(res)
+            return res, beoreGAPoutput

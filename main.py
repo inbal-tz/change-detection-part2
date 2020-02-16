@@ -51,7 +51,7 @@ OUTPUT_DIR = r'D:\Users Data\inbal.tlgip\Project\output_images'
 DATA_ROOT = r'D:\Users Data\inbal.tlgip\Desktop\part b'
 BATCH_SIZE = 16
 NUM_WORKERS = 0
-NUM_EPOCHS = 1
+NUM_EPOCHS = 80
 ENCODER_ONLY = False
 device = torch.device("cuda")
 # device = torch.device("cpu")
@@ -111,7 +111,7 @@ class MyCoTransform(object):
 
 
 def calc_TPFPTNFN_on_test_set(model, loader_test):
-    print('printing preformance on the test set:')
+    print('printing preformance on the test set: ', end='')
     FP = 0
     FN = 0
     TP = 0
@@ -122,7 +122,8 @@ def calc_TPFPTNFN_on_test_set(model, loader_test):
         targets = labels.to(device)
         targets[targets < 128] = 0  # ChangedByUs
         targets[targets >= 128] = 1  # ChangedByUs
-        output, _ = model([inputs.to(device), inputs1.to(device)], only_encode=ENCODER_ONLY)[0]
+        output, _ = model([inputs.to(device), inputs1.to(device)], only_encode=ENCODER_ONLY)
+        output = output[0]
         target = torch.LongTensor([target.cpu().numpy().flatten()[0] for target in targets])[0]
         if target == 0 and output[0] > output[1]:
             TN += 1
@@ -247,17 +248,18 @@ def main():
 
         # print FP FN TP TN
         calc_TPFPTNFN_on_test_set(model, loader_test)
-        print("results of 7 test images")
-        for image in seven_test_images:
-            inputs = image[0].to(device)
-            inputs1 = image[1].to(device)  # ChangedByUs
-            output, _ = model([inputs.to(device), inputs1.to(device)], only_encode=ENCODER_ONLY)[0]
-            print(output)  # correct output for 12/2/2020 1001101
+        # print("results of 7 test images")
+        # for image in seven_test_images:
+        #     inputs = image[0].to(device)
+        #     inputs1 = image[1].to(device)  # ChangedByUs
+        #     output, _ = model([inputs.to(device), inputs1.to(device)], only_encode=ENCODER_ONLY)
+        #     output = output[0]
+        #     print(output)  # correct output for 12/2/2020 1001101
     my_end_time = time.time()
     print(my_end_time - my_start_time)
 
     print('loss: {average:', average, '} (epoch: {',epoch,'}, step: {',step,'})', "// Avg time/img: %.4f s" % (sum(time_train) / len(time_train) / BATCH_SIZE))
-
+    torch.save(model.state_dict(), r'C:\Users\inbal.tlgip\modelsave_cropped.pt')
 
     # # ### Validation ###
     # #Validate on val images after each epoch of training
@@ -307,7 +309,7 @@ def main():
 
     #
     #  ### Visualizing the Output###
-    torch.save(model.state_dict(), r'C:\Users\inbal.tlgip\modelsave_cropped.pt')
+
     # Qualitative Analysis
 
 
@@ -332,7 +334,7 @@ if __name__ == '__main__':
     softmax = torch.nn.Softmax(dim=1)
     model_file = importlib.import_module('erfnet')
     model = model_file.Net(NUM_CLASSES).to(device)
-    model.load_state_dict(torch.load(r'C:\Users\inbal.tlgip\modelsave_cropped_150epochs.pt'))
+    model.load_state_dict(torch.load(r'C:\Users\inbal.tlgip\modelsave_cropped.pt'))
     model.to(device)
     model.eval()
     # from torchsummary import summary
@@ -340,9 +342,9 @@ if __name__ == '__main__':
     # print(model)
     co_transform_val = MyCoTransform(ENCODER_ONLY, augment=False, height=IMAGE_HEIGHT) #askAlex why we dont augment in val?
     #load test data
-    dataset_test = idd_lite(DATA_ROOT, co_transform_val, 'test')
-    loader_test = DataLoader(dataset_test, num_workers=NUM_WORKERS, batch_size=1, shuffle=True)
-    calc_TPFPTNFN_on_test_set(model, loader_test)
+    # dataset_test = idd_lite(DATA_ROOT, co_transform_val, 'test')
+    # loader_test = DataLoader(dataset_test, num_workers=NUM_WORKERS, batch_size=1, shuffle=True)
+    # calc_TPFPTNFN_on_test_set(model, loader_test)
     # for step, (images, images1, labels, filename) in enumerate(loader_test):
     #     inputs = images.to(device)
     #     inputs1 = images1.to(device)  # ChangedByUs
