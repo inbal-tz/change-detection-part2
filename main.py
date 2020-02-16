@@ -49,9 +49,9 @@ USE_CUDA = torch.cuda.is_available()
 IMAGE_HEIGHT = 64
 OUTPUT_DIR = r'D:\Users Data\inbal.tlgip\Project\output_images'
 DATA_ROOT = r'D:\Users Data\inbal.tlgip\Desktop\part b'
-BATCH_SIZE = 2
+BATCH_SIZE = 16
 NUM_WORKERS = 0
-NUM_EPOCHS = 150
+NUM_EPOCHS = 1
 ENCODER_ONLY = False
 device = torch.device("cuda")
 # device = torch.device("cpu")
@@ -109,6 +109,32 @@ class MyCoTransform(object):
 #
 # We'll follow pytorch recommended semantics, and use a dataloader to load the data.
 
+
+def calc_TPFPTNFN_on_test_set(model, loader_test):
+    print('printing preformance on the test set:')
+    FP = 0
+    FN = 0
+    TP = 0
+    TN = 0
+    for step, (images, images1, labels, filename) in enumerate(loader_test):
+        inputs = images.to(device)
+        inputs1 = images1.to(device)  # ChangedByUs
+        targets = labels.to(device)
+        targets[targets < 128] = 0  # ChangedByUs
+        targets[targets >= 128] = 1  # ChangedByUs
+        output, _ = model([inputs.to(device), inputs1.to(device)], only_encode=ENCODER_ONLY)[0]
+        target = torch.LongTensor([target.cpu().numpy().flatten()[0] for target in targets])[0]
+        if target == 0 and output[0] > output[1]:
+            TN += 1
+        if target == 0 and output[0] < output[1]:
+            FP += 1
+        if target == 1 and output[0] > output[1]:
+            FN += 1
+        if target == 1 and output[0] < output[1]:
+            TP += 1
+    print('FP: ', FP, 'FN: ', FN, 'TP: ', TP, 'TN: ', TN)
+    if TP+FN > 0 and TP+FP > 0:
+        print('recall= ', TP/(TP+FN), 'precision= ', TP/(TP+FP))
 
 
 def main():
@@ -188,7 +214,7 @@ def main():
             targets_orig = targets.clone()
             targets[targets_orig >= 128] = 1  # ChangedByUs 1=white. there is a change
             targets[targets_orig < 128] = 0  # ChangedByUs 0=black. no change
-            outputs = model([inputs, inputs1], only_encode=ENCODER_ONLY)
+            outputs, _ = model([inputs, inputs1], only_encode=ENCODER_ONLY)
             # zero the parameter gradients
             optimizer.zero_grad()
             # forward + backward + optimize
@@ -220,36 +246,12 @@ def main():
             print ("EPOCH IoU on TRAIN set: ", iouStr, "%")
 
         # print FP FN TP TN
-        FP = 0
-        FN = 0
-        TP = 0
-        TN = 0
-        for step, (images, images1, labels, filename) in enumerate(loader_test):
-            inputs = images.to(device)
-            inputs1 = images1.to(device)  # ChangedByUs
-            targets = labels.to(device)
-            targets[targets < 128] = 0  # ChangedByUs
-            targets[targets >= 128] = 1  # ChangedByUs
-            output = model([inputs.to(device), inputs1.to(device)], only_encode=ENCODER_ONLY)[0]
-            target = torch.LongTensor([target.cpu().numpy().flatten()[0] for target in targets])[0]
-            distance_from_correct = []
-            distance_from_incorrect = []
-            if target == 0 and output[0] > output[1]:
-                TN += 1
-            if target == 0 and output[0] < output[1]:
-                FP += 1
-            if target == 1 and output[0] > output[1]:
-                FN += 1
-            if target == 1 and output[0] < output[1]:
-                TP += 1
-        print('epoch', epoch, '- FP: ', FP, 'FN: ', FN, 'TP: ', TP, 'TN: ', TN)
-        if TP+FN > 0 and TP+FP > 0:
-            print('recall= ', TP/(TP+FN), 'precission= ', TP/(TP+FP))
+        calc_TPFPTNFN_on_test_set(model, loader_test)
         print("results of 7 test images")
         for image in seven_test_images:
             inputs = image[0].to(device)
             inputs1 = image[1].to(device)  # ChangedByUs
-            output = model([inputs.to(device), inputs1.to(device)], only_encode=ENCODER_ONLY)[0]
+            output, _ = model([inputs.to(device), inputs1.to(device)], only_encode=ENCODER_ONLY)[0]
             print(output)  # correct output for 12/2/2020 1001101
     my_end_time = time.time()
     print(my_end_time - my_start_time)
@@ -316,7 +318,7 @@ def main():
     # (val_image_A, val_image_B, val_image_labels) = dataiter.next()
     for step, (images, images1, labels, filename) in enumerate(loader_test):
 
-        outputs_val = model([images.to(device), images1.to(device)], only_encode=ENCODER_ONLY)
+        outputs_val, _ = model([images.to(device), images1.to(device)], only_encode=ENCODER_ONLY)
         outputs_val = softmax(outputs_val)
         # cv2.imwrite(r'D:\Users Data\inbal.tlgip\Project\output_images\test_output/'+str(step)+'.tiff',
         #             (((outputs_val[0, 1, :, :] > 0.5) * 255).squeeze().cpu().numpy()).astype('uint8'))
@@ -326,12 +328,11 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-    #test model- load model from file
+    # test model- load model from file
     softmax = torch.nn.Softmax(dim=1)
     model_file = importlib.import_module('erfnet')
     model = model_file.Net(NUM_CLASSES).to(device)
-    model.load_state_dict(torch.load(r'C:\Users\inbal.tlgip\modelsave_cropped.pt'))
+    model.load_state_dict(torch.load(r'C:\Users\inbal.tlgip\modelsave_cropped_150epochs.pt'))
     model.to(device)
     model.eval()
     # from torchsummary import summary
@@ -341,13 +342,16 @@ if __name__ == '__main__':
     #load test data
     dataset_test = idd_lite(DATA_ROOT, co_transform_val, 'test')
     loader_test = DataLoader(dataset_test, num_workers=NUM_WORKERS, batch_size=1, shuffle=True)
-    for step, (images, images1, labels, filename) in enumerate(loader_test):
-        inputs = images.to(device)
-        inputs1 = images1.to(device)  # ChangedByUs
-        targets = labels.to(device)
-        targets[targets < 128] = 0  # ChangedByUs
-        targets[targets >= 128] = 1  # ChangedByUs
-        output = model([inputs.to(device), inputs1.to(device)], only_encode=ENCODER_ONLY)[0]
-        target = torch.LongTensor([target.cpu().numpy().flatten()[0] for target in targets])[0]
-        # print("target:", target, "output:", output)
+    calc_TPFPTNFN_on_test_set(model, loader_test)
+    # for step, (images, images1, labels, filename) in enumerate(loader_test):
+    #     inputs = images.to(device)
+    #     inputs1 = images1.to(device)  # ChangedByUs
+    #     targets = labels.to(device)
+    #     targets[targets < 128] = 0  # ChangedByUs
+    #     targets[targets >= 128] = 1  # ChangedByUs
+    #     output = model([inputs.to(device), inputs1.to(device)], only_encode=ENCODER_ONLY)[0]
+    #     target = torch.LongTensor([target.cpu().numpy().flatten()[0] for target in targets])[0]
+    #     # print("target:", target, "output:", torch.nn.Softmax()(output))
+    #     # print()
+    #     x=1
 

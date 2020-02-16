@@ -106,6 +106,7 @@ class UpsamplerBlock (nn.Module):
         output = self.bn(output)
         return F.relu(output)
 
+
 class Decoder (nn.Module):
     def __init__(self, num_classes):
         super().__init__()
@@ -120,19 +121,21 @@ class Decoder (nn.Module):
         self.layers.append(UpsamplerBlock(64, 16))
         self.layers.append(non_bottleneck_1d(16, 0, 1))
         self.layers.append(non_bottleneck_1d(16, 0, 1))
-        self.layers.append(nn.ConvTranspose2d( 16, num_classes, 2, stride=2, padding=0, output_padding=0, bias=True))
-        self.layers.append(torch.nn.AvgPool2d(kernel_size=64, stride=0, padding=0, ceil_mode=False, count_include_pad=True))
+        self.layers.append(nn.ConvTranspose2d(16, 16, 2, stride=2, padding=0, output_padding=0, bias=True))
 
-        self.finalLayer = nn.Linear(2, 2, False)
+        self.GAP = (torch.nn.AvgPool2d(kernel_size=64, stride=0, padding=0, ceil_mode=False, count_include_pad=True))
+        self.finalLayer = nn.Linear(16, 2, False)
 
     def forward(self, input):
         output = input
 
         for layer in self.layers:
             output = layer(output)
+        beoreGAPoutput = output
+        output = self.GAP(output)
         output = torch.flatten(output, start_dim=1)
         output = self.finalLayer(output)
-        return output
+        return output, beoreGAPoutput
 
 
 # ERFNet
@@ -158,5 +161,5 @@ class Net(nn.Module):
             for i in [0, 1]:  # ChangedByUs
                 results.append(self.encoder.forward(inputs[i]))  # ChangedByUs
             res = torch.cat((results[0], results[1]), dim=1)  # askalex - if dim = 1 or 0
-            res = self.decoder.forward(res)
-            return res
+            res, GAPoutput = self.decoder.forward(res)
+            return res, GAPoutput
