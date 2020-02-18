@@ -4,6 +4,7 @@ import time
 import numpy as np
 import torch
 import os
+from sklearn.metrics import precision_recall_curve
 import math
 import torch.nn as nn
 from iou_cc import calc_iou
@@ -327,14 +328,13 @@ def main():
 
 
 
-
 if __name__ == '__main__':
-    main()
+    # main()
     # test model- load model from file
     softmax = torch.nn.Softmax(dim=1)
     model_file = importlib.import_module('erfnet')
     model = model_file.Net(NUM_CLASSES).to(device)
-    model.load_state_dict(torch.load(r'C:\Users\inbal.tlgip\modelsave_cropped.pt'))
+    model.load_state_dict(torch.load(r'C:\Users\inbal.tlgip\modelsave_cropped_80epochs_recall75_precission61_training80000_batch16.pt'))
     model.to(device)
     model.eval()
     # from torchsummary import summary
@@ -342,18 +342,65 @@ if __name__ == '__main__':
     # print(model)
     co_transform_val = MyCoTransform(ENCODER_ONLY, augment=False, height=IMAGE_HEIGHT) #askAlex why we dont augment in val?
     #load test data
-    # dataset_test = idd_lite(DATA_ROOT, co_transform_val, 'test')
-    # loader_test = DataLoader(dataset_test, num_workers=NUM_WORKERS, batch_size=1, shuffle=True)
+    dataset_test = idd_lite(DATA_ROOT, co_transform_val, 'test')
+    loader_test = DataLoader(dataset_test, num_workers=NUM_WORKERS, batch_size=1, shuffle=True)
     # calc_TPFPTNFN_on_test_set(model, loader_test)
-    # for step, (images, images1, labels, filename) in enumerate(loader_test):
-    #     inputs = images.to(device)
-    #     inputs1 = images1.to(device)  # ChangedByUs
-    #     targets = labels.to(device)
-    #     targets[targets < 128] = 0  # ChangedByUs
-    #     targets[targets >= 128] = 1  # ChangedByUs
-    #     output = model([inputs.to(device), inputs1.to(device)], only_encode=ENCODER_ONLY)[0]
-    #     target = torch.LongTensor([target.cpu().numpy().flatten()[0] for target in targets])[0]
-    #     # print("target:", target, "output:", torch.nn.Softmax()(output))
+    recall_precission_curve_label=[]
+    recall_precission_curve_pred =[]
+    for step, (images, images1, labels, filename) in enumerate(loader_test):
+        inputs = images.to(device)
+        inputs1 = images1.to(device)  # ChangedByUs
+        targets = labels.to(device)
+        targets[targets < 128] = 0  # ChangedByUs
+        targets[targets >= 128] = 1  # ChangedByUs
+        try:
+            output, GAP = model([inputs.to(device), inputs1.to(device)], only_encode=ENCODER_ONLY)
+        except:
+            continue
+        output = output[0]
+        target = torch.LongTensor([target.cpu().numpy().flatten()[0] for target in targets])[0]
+        recall_precission_curve_label.append(target.item())
+        recall_precission_curve_pred.append(torch.nn.Softmax(dim=0)(output)[1])
+        #save 16 channels to gap folder
+        # for i in range(16):
+        #     cv2.imwrite("gap/gap"+str(i)+".tiff", (GAP[0, i, :, :].squeeze().cpu().detach().numpy()).astype('uint8'))
+        # import shutil
+        # shutil.copy(os.path.join(r'D:\Users Data\inbal.tlGIP\Desktop\part b\labels\testCropped', filename[0] + '.jpg'), "gap/label.tiff")
+        # shutil.copy(os.path.join(r'D:\Users Data\inbal.tlGIP\Desktop\part b\images\test\A', filename[0] + '.jpg'), "gap/A.tiff")
+        # shutil.copy(os.path.join(r'D:\Users Data\inbal.tlGIP\Desktop\part b\images\test\B', filename[0] + '.jpg'), "gap/B.tiff")
+        weights = model.decoder.finalLayer.weight
+        final_image = GAP[0, 0, :, :] * weights[1][0]
+        for i in range(1, 16):
+            final_image += GAP[0, i, :, :] * weights[1][i]
+        cv2.imwrite("heat_map.tiff", final_image.squeeze().cpu().detach().numpy())
+        fig , ax= plt.subplots()
+        ax.imshow(final_image.squeeze().cpu().detach(), cmap = 'jet', )
+        fig.savefig('gap/'+filename[0]+'.png')
+        plt.close(fig)
+        # print(filename)
+        # print("target:", target, "output:", torch.nn.Softmax()(output))
     #     # print()
-    #     x=1
+        x = 1
+    precision, recall, thresholds = precision_recall_curve(recall_precission_curve_label, recall_precission_curve_pred)
+    best_avg = 0
+    best_threshold = 0
+    best_precision=0
+    best_recall=0
+
+    for i in range(len(precision)):
+        cur_avg = 2*(precision[i] * recall[i])/(precision[i] + recall[i])
+        if cur_avg > best_avg:
+            best_avg = cur_avg
+            best_threshold = thresholds[i]
+            best_precision = precision[i]
+            best_recall = recall[i]
+    print(best_avg, best_threshold, best_precision, best_recall)
+    print(thresholds.tolist())
+    # print( precision)
+    # print( recall)
+    # print( thresholds)
+    plt.scatter(recall, precision)
+    plt.show()
+
+
 
