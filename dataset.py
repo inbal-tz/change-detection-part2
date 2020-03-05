@@ -185,14 +185,14 @@ class idd_lite(Dataset):
         
         self.co_transform = co_transform # ADDED THIS
         # using only a subset of the data! and make it have same number of changed/unchanged images (8rows)
-        if subset == 'train':
-            self.filenames = self.get_balanced_dataBase(80000, os.path.join(self.images_root, 'A'), self.labels_root)
-            self.filenames1 = self.get_balanced_dataBase(80000, os.path.join(self.images_root, 'B'), self.labels_root)
-            self.filenamesGt = self.get_balanced_dataBase(80000, self.labels_root, self.labels_root)
-        if subset == 'test':
-            self.filenames = self.get_balanced_dataBase(1000, os.path.join(self.images_root, 'A'), self.labels_root)
-            self.filenames1 = self.get_balanced_dataBase(1000, os.path.join(self.images_root, 'B'), self.labels_root)
-            self.filenamesGt = self.get_balanced_dataBase(1000, self.labels_root, self.labels_root)
+        # if subset == 'train':
+        #     self.filenames = self.get_balanced_dataBase(80000, os.path.join(self.images_root, 'A'), self.labels_root)
+        #     self.filenames1 = self.get_balanced_dataBase(80000, os.path.join(self.images_root, 'B'), self.labels_root)
+        #     self.filenamesGt = self.get_balanced_dataBase(80000, self.labels_root, self.labels_root)
+        # if subset == 'test':
+        #     self.filenames = self.get_balanced_dataBase(1000, os.path.join(self.images_root, 'A'), self.labels_root)
+        #     self.filenames1 = self.get_balanced_dataBase(1000, os.path.join(self.images_root, 'B'), self.labels_root)
+        #     self.filenamesGt = self.get_balanced_dataBase(1000, self.labels_root, self.labels_root)
 
     def get_balanced_dataBase(self, dataBase_length, file_path, label_path):
         file_names = [os.path.join(dp, f) for dp, dn, fn in os.walk(os.path.expanduser(file_path)) for f in fn if

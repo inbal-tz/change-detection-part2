@@ -4,16 +4,16 @@ from torch.utils.data import DataLoader
 from PIL import Image
 import matplotlib.pyplot as plt
 
-PATH_A = r'D:\Users Data\inbal.tlGIP\Desktop\ChangeDetectionDataset\images\test\A'
-PATH_B = r'D:\Users Data\inbal.tlGIP\Desktop\ChangeDetectionDataset\images\test\B'
-PATH_LABEL = r'D:\Users Data\inbal.tlGIP\Desktop\ChangeDetectionDataset\labels\train'
-OUTPUT_A = r'D:\Users Data\inbal.tlGIP\Desktop\part b\images\test\croped A'
-OUTPUT_B = r'D:\Users Data\inbal.tlGIP\Desktop\part b\images\test\croped B'
-OUTPUT_LABEL = r'D:\Users Data\inbal.tlGIP\Desktop\part b\labels\trainCropped'
+PATH_A = r'C:\Users\inbal.tlgip\Desktop\ChangeDetectionDataset\Real\subset\images\test\A_whole'
+PATH_B = r'C:\Users\inbal.tlgip\Desktop\ChangeDetectionDataset\Real\subset\images\test\B_whole'
+PATH_LABEL = r'C:\Users\inbal.tlgip\Desktop\ChangeDetectionDataset\Real\subset\labels\test_whole'
+OUTPUT_A = r'C:\Users\inbal.tlgip\Desktop\ChangeDetectionDataset\Real\subset\images\test\A'
+OUTPUT_B = r'C:\Users\inbal.tlgip\Desktop\ChangeDetectionDataset\Real\subset\images\test\B'
+OUTPUT_LABEL = r'C:\Users\inbal.tlgip\Desktop\ChangeDetectionDataset\Real\subset\labels\test'
 NUM_WORKERS = 0
 BATCH_SIZE = 1
 EXTENSIONS = ['.jpg', '.png']
-CROPPED_SIZE = 64
+CROPPED_SIZE = 128
 #
 # def load_image(file):
 #     return Image.open(file)
@@ -45,6 +45,6 @@ def split_image (input_path, output_path):
             img.save(path)
 
 
-# split_image(PATH_A, OUTPUT_A)
-# split_image(PATH_B, OUTPUT_B)
+split_image(PATH_A, OUTPUT_A)
+split_image(PATH_B, OUTPUT_B)
 split_image(PATH_LABEL, OUTPUT_LABEL)

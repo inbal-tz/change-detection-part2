@@ -123,7 +123,7 @@ class Decoder (nn.Module):
         self.layers.append(non_bottleneck_1d(16, 0, 1))
         self.layers.append(nn.ConvTranspose2d(16, 16, 2, stride=2, padding=0, output_padding=0, bias=True))
 
-        self.GAP = (torch.nn.AvgPool2d(kernel_size=64, stride=0, padding=0, ceil_mode=False, count_include_pad=True))
+        self.GAP = (torch.nn.AvgPool2d(kernel_size=128, stride=0, padding=0, ceil_mode=False, count_include_pad=True))
         self.finalLayer = nn.Linear(16, 2, False)
 
     def forward(self, input):
