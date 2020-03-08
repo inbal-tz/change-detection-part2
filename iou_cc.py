@@ -30,8 +30,8 @@ def calc_iou(output, label, threshold):
     count_blob = 0
     recall = 0
     precision = 0
-    output = cv2.threshold(output, 127, 255, cv2.THRESH_BINARY)[1]  # ensure binary
-    label = cv2.threshold(label, 127, 255, cv2.THRESH_BINARY)[1]  # ensure binary
+    # output = cv2.threshold(output, 127, 255, cv2.THRESH_BINARY)[1]  # ensure binary
+    label = cv2.threshold(label, 0.5, 255, cv2.THRESH_BINARY)[1]  # ensure binary
     label_cc = cv2.connectedComponentsWithStats(label, connectivity=8)
     # imshow_components(output_cc[1]) #to comment out
     # imshow_components(label_cc[1]) #to comment out
@@ -47,9 +47,8 @@ def calc_iou(output, label, threshold):
     label[label < 128] = 0
     label[label >= 128] = 1
     square_cc = cv2.connectedComponentsWithStats(square_image, connectivity=8)
-    imshow_components(square_cc[1])
     iou_array=[] #array of iou for each blob. return average of this.
-    for i in range(1,square_cc[0]):
+    for i in range(1, square_cc[0]):
         if square_cc[2][i][4] > MIN_BLOB_AREA:
             diff = output[square_cc[1] == i] - label[square_cc[1] == i] #since type is unsighned int, 255=-1
             diff = Counter(diff)
